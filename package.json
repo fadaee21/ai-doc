@@ -1,12 +1,19 @@
 {
   "name": "@brdp/ai-cli",
-  "version": "0.0.1",
+  "version": "1.0.0",
   "private": true,
   "bin": {
-    "ai": "./scripts/ai.cjs"
+    "ai": "./dist/ai.js"
+  },
+  "scripts": {
+    "build": "tsc --incremental"
   },
   "dependencies": {
     "commander": "^12.1.0",
     "dotenv": "^16.6.1"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "catalog:"
   }
 }
