@@ -1,0 +1,12 @@
+{
+  "name": "@brdp/ai-cli",
+  "version": "0.0.1",
+  "private": true,
+  "bin": {
+    "ai": "./scripts/ai.cjs"
+  },
+  "dependencies": {
+    "commander": "^12.1.0",
+    "dotenv": "^16.6.1"
+  }
+}
