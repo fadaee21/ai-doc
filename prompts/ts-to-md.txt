@@ -1,32 +1,109 @@
-You are an expert React technical writer. Your task is to analyze the provided TypeScript/TSX React component code and generate comprehensive, standardized Markdown documentation.
+You are generating machine-readable documentation for an internal React component library.
+This document will be injected into an LLM system prompt to generate new business components.
+It must be dense, unambiguous, and complete. No narrative. No fluff.
 
-Follow this exact structure and formatting rules:
+━━━ STACK CONTEXT ━━━
 
-1. Title & Description:
-   - Use an H1 (`#`) for the component name.
-   - Provide a concise, 1-2 sentence description of what the component does. Prioritize any JSDoc descriptions found above the component definition.
+The consuming LLM will generate code for this stack — encode all constraints as hard rules:
 
-2. Props API (Strict Table Format):
-   - Use an H2 (`##`) titled "Props".
-   - Create a Markdown table with exactly these columns: `Prop`, `Type`, `Required`, `Default`, `Description`.
-   - Extract types strictly from the TypeScript interfaces. Format types using inline code blocks (e.g., `string`, `ReactNode`).
-   - Mark "Yes" or "No" in the Required column based on whether the prop has a `?` or a default value.
-   - Use JSDoc comments from the interfaces to populate the Description column.
+ALLOWED imports:
+  @brdp/ui            → all UI components (Button, Table, Form, Modal, Select, etc.)
+  @brdp/ui/form       → form utilities and hooks
+  @brdp/engine        → data fetching, state management
+  @brdp/utils         → removeDuplicates, isArray, arrayIsEmpty, generateUuidV4,
+                        ISOToJalaaliDate, ISOToJalaaliDateTime, jalaaliToISO,
+                        objectToQueryString, removeEmptyValues, defineMessages, getFormatMessage
+  antd                → ONLY `import {{ App }} from "antd"` for App.useApp() hooks.
+                        NO other antd imports are ever allowed.
+  react               → hooks and types only
 
-3. Usage Example:
-   - Use an H2 (`##`) titled "Usage".
-   - Provide a practical, copy-pasteable code block using JSX/TSX.
-   - The example MUST include the necessary import statement and demonstrate realistic mock data for the props.
+FORBIDDEN:
+  - Direct antd component imports (Button, Table, Modal, etc. from antd)
+  - Inline styles unless the value is dynamic (computed at runtime)
+  - `any` type
+  - Default exports from antd except App
 
-4. Notes:
-   - Use an H2 (`##`) titled "Notes" (omit this section entirely if there are no notes).
-   - Include any important information about accessibility (a11y), styling dependencies (e.g., required CSS/Tailwind classes), controlled vs. uncontrolled behavior, or edge cases.
+RTL: layout direction is always RTL. Persian/Jalali calendar is standard for dates.
+Dates: always ISOToJalaaliDate(isoString) for display, jalaaliToISO(jalaliString) for API calls.
 
-Output Rules:
-- Output ONLY valid raw Markdown. 
-- Do NOT include conversational filler (e.g., "Here is the documentation").
-- Do NOT wrap the entire output in markdown code block wrappers (like ```markdown).
+━━━ OUTPUT FORMAT ━━━
 
-Input code:
+Produce a single Markdown file. No preamble. No code block wrapper around the whole file.
+Use exactly this structure and these heading levels:
+
+# {ComponentName}
+
+One sentence. What this component does and where it is used.
+
+## contract
+
+package: [exact import path, e.g. @brdp/ui or packages/ui/src/components/X]
+wraps: [antd base component name, or "none"]
+direction: rtl | ltr | both
+date-format: jalali | iso | none
+
+## props
+
+Pipe-separated table. No blank lines inside the table.
+Columns: name | type | required | default | behavior
+
+"behavior" column rules:
+- State what happens when the prop is absent and it is required: "component throws"
+- State what happens when optional and absent: "falls back to X" or "feature disabled"
+- If the prop is a callback, write the full signature: "(record: RecordType) => void"
+- If the prop is a Jalali date string, write: "Jalali YYYY/MM/DD"
+- If the prop passes through to the antd base component, write: "passed to [AntdComponent].[propName]"
+
+## @brdp/utils usage
+
+List only the utils functions actually used in this component's source.
+For each: functionName — what it does in this component — example call.
+Omit this section entirely if no @brdp/utils functions are used.
+
+## patterns
+
+Subsections for each pattern that applies. Omit subsections that do not apply.
+
+### form integration
+How this component connects to @brdp/ui/form.
+Show the exact Form.Item wrapper pattern with name prop.
+
+### engine integration
+Which @brdp/engine hook or store this component uses.
+Show the hook call signature.
+
+### composition
+How this component is typically composed with other @brdp/ui components.
+Show a minimal realistic JSX snippet (no imports, just the JSX tree).
+
+## constraints
+
+Bullet list. Hard rules a code-generating LLM must follow when recreating or extending this component.
+Each constraint must be a single, unambiguous sentence starting with a verb:
+  - Never import [X] from antd directly; use @brdp/ui instead.
+  - Always wrap with App from antd when using message/modal/notification hooks.
+  - Always convert ISO dates to Jalali using ISOToJalaaliDate before rendering.
+  - etc.
+
+Include a constraint for every non-obvious rule visible in the source.
+Minimum 3 constraints. Maximum 10.
+
+## minimal reproduction
+
+The smallest possible working TSX snippet that renders this component correctly.
+Include imports. Use realistic Persian banking mock data where props require it
+(account numbers, Rial amounts, Jalali dates, Persian names).
+No explanatory comments inside the code.
+This snippet must be copy-pasteable and compile without errors.
+
+━━━ OUTPUT RULES ━━━
+
+- Output ONLY valid Markdown. No preamble. No fences around the whole file.
+- Every section heading must match exactly as specified above (lowercase, no title case).
+- Do not add sections not listed above.
+- Do not invent props, patterns, or constraints not present in the source.
+- If a section has no content (e.g. no @brdp/utils usage), omit it entirely.
+
+Input component source:
 
 {CODE}
