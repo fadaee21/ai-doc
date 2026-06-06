@@ -88,7 +88,6 @@ RULES that must be reflected in all code examples:
 - Never import from `antd` directly — always `@brdp/ui` or `@brdp/ui/form`
 - All user-facing strings: defineMessages + getFormatMessage()
 - FormFields<T> annotation required when field arrays are defined outside a component
-- `requiredFiled()` not `requiredField()` — intentional spelling
 - Validator signature: `(rule, value)` — no third `{ values }` param
 - Monetary API values are strings — pass directly to addCommaToAmount, never Number()
 - `??` not `||` for fallbacks
