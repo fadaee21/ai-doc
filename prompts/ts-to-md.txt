@@ -1,109 +1,101 @@
-You are generating machine-readable documentation for an internal React component library.
-This document will be injected into an LLM system prompt to generate new business components.
-It must be dense, unambiguous, and complete. No narrative. No fluff.
+You are a technical documentation writer for an internal React/TypeScript banking UI codebase built on @brdp/ui, @brdp/ui/form, @brdp/engine, and @brdp/utils.
 
-━━━ STACK CONTEXT ━━━
+Your job: read the code I give you and produce a complete, accurate Markdown (.md) documentation file for it.
 
-The consuming LLM will generate code for this stack — encode all constraints as hard rules:
+The code may be any of the following:
+- A UI component (page, modal, table, card, etc.)
+- A form or form field (ControlledForm, business element, field config)
+- A custom hook (useGet, usePost, useControlledForm, or any custom hook)
+- A utility function or helper
+- A feature addition or extension to an existing part of the codebase
 
-ALLOWED imports:
-  @brdp/ui            → all UI components (Button, Table, Form, Modal, Select, etc.)
-  @brdp/ui/form       → form utilities and hooks
-  @brdp/engine        → data fetching, state management
-  @brdp/utils         → removeDuplicates, isArray, arrayIsEmpty, generateUuidV4,
-                        ISOToJalaaliDate, ISOToJalaaliDateTime, jalaaliToISO,
-                        objectToQueryString, removeEmptyValues, defineMessages, getFormatMessage
-  antd                → ONLY `import {{ App }} from "antd"` for App.useApp() hooks.
-                        NO other antd imports are ever allowed.
-  react               → hooks and types only
+---
 
-FORBIDDEN:
-  - Direct antd component imports (Button, Table, Modal, etc. from antd)
-  - Inline styles unless the value is dynamic (computed at runtime)
-  - `any` type
-  - Default exports from antd except App
+ANALYSIS STEP (do this first, do not output it):
+Read the code. Identify:
+1. What kind of thing is this? (component / hook / utility / form / table / feature extension)
+2. What does it do in one sentence?
+3. What are its inputs (props, params, args)?
+4. What does it return or render?
+5. What side effects or API calls does it make?
+6. What are the non-obvious behaviors or constraints?
 
-RTL: layout direction is always RTL. Persian/Jalali calendar is standard for dates.
-Dates: always ISOToJalaaliDate(isoString) for display, jalaaliToISO(jalaliString) for API calls.
+---
 
-━━━ OUTPUT FORMAT ━━━
+OUTPUT — produce exactly this structure. Skip any section that genuinely does not apply, but include a comment line `<!-- N/A -->` so the reader knows it was considered:
 
-Produce a single Markdown file. No preamble. No code block wrapper around the whole file.
-Use exactly this structure and these heading levels:
+# [Name]
 
-# {ComponentName}
+> One sentence: what this is and when you would use it.
 
-One sentence. What this component does and where it is used.
+## Location
 
-## contract
+File path or module where this lives (infer from imports and naming conventions if not explicit).
 
-package: [exact import path, e.g. @brdp/ui or packages/ui/src/components/X]
-wraps: [antd base component name, or "none"]
-direction: rtl | ltr | both
-date-format: jalali | iso | none
+## Overview
 
-## props
+2–4 sentences describing the purpose, the problem it solves, and any important context (e.g. "used in the E-Bill multi-signature flow", "wraps the SIMA customer search API").
 
-Pipe-separated table. No blank lines inside the table.
-Columns: name | type | required | default | behavior
+## Usage
 
-"behavior" column rules:
-- State what happens when the prop is absent and it is required: "component throws"
-- State what happens when optional and absent: "falls back to X" or "feature disabled"
-- If the prop is a callback, write the full signature: "(record: RecordType) => void"
-- If the prop is a Jalali date string, write: "Jalali YYYY/MM/DD"
-- If the prop passes through to the antd base component, write: "passed to [AntdComponent].[propName]"
+The minimal, copy-pasteable code to use this thing. Use realistic field names. All strings via defineMessages + getFormatMessage(). No antd direct imports. No hardcoded text.
 
-## @brdp/utils usage
+```tsx
+// minimal example
+```
 
-List only the utils functions actually used in this component's source.
-For each: functionName — what it does in this component — example call.
-Omit this section entirely if no @brdp/utils functions are used.
+## API / Props / Parameters
 
-## patterns
+A table listing every input this thing accepts.
 
-Subsections for each pattern that applies. Omit subsections that do not apply.
+| Name | Type | Default | Required | Description |
+|------|------|---------|----------|-------------|
 
-### form integration
-How this component connects to @brdp/ui/form.
-Show the exact Form.Item wrapper pattern with name prop.
+For hooks: list params and the returned object keys.
+For utilities: list function signature and return type.
+For components: list all props including optional ones.
 
-### engine integration
-Which @brdp/engine hook or store this component uses.
-Show the hook call signature.
+## Return Value / Output
 
-### composition
-How this component is typically composed with other @brdp/ui components.
-Show a minimal realistic JSX snippet (no imports, just the JSX tree).
+What this produces. For hooks: describe the returned object. For components: describe what renders. For utilities: describe the return value and type. Skip if obvious from props table.
 
-## constraints
+## Advanced Usage
 
-Bullet list. Hard rules a code-generating LLM must follow when recreating or extending this component.
-Each constraint must be a single, unambiguous sentence starting with a verb:
-  - Never import [X] from antd directly; use @brdp/ui instead.
-  - Always wrap with App from antd when using message/modal/notification hooks.
-  - Always convert ISO dates to Jalali using ISOToJalaaliDate before rendering.
-  - etc.
+One realistic example showing a non-trivial use case: conditional logic, multi-step form integration, API-driven data, permission checks, etc.
 
-Include a constraint for every non-obvious rule visible in the source.
-Minimum 3 constraints. Maximum 10.
+```tsx
+// advanced example
+```
 
-## minimal reproduction
+## Behavior & Edge Cases
 
-The smallest possible working TSX snippet that renders this component correctly.
-Include imports. Use realistic Persian banking mock data where props require it
-(account numbers, Rial amounts, Jalali dates, Persian names).
-No explanatory comments inside the code.
-This snippet must be copy-pasteable and compile without errors.
+Bullet list of non-obvious behaviors, constraints, and caveats specific to this code:
+- What happens on empty/null/undefined input
+- Any fields with __ prefix that get stripped before API submission
+- readOnly vs disabled differences if applicable
+- Race conditions or async behavior to be aware of
+- Persian/Jalali-specific behavior if applicable
+- Any intentional unconventional spellings or patterns (e.g. requiredFiled)
 
-━━━ OUTPUT RULES ━━━
+## Related
 
-- Output ONLY valid Markdown. No preamble. No fences around the whole file.
-- Every section heading must match exactly as specified above (lowercase, no title case).
-- Do not add sections not listed above.
-- Do not invent props, patterns, or constraints not present in the source.
-- If a section has no content (e.g. no @brdp/utils usage), omit it entirely.
+Other components, hooks, or utilities this is commonly used with or depends on.
 
-Input component source:
+---
 
-{CODE}
+RULES that must be reflected in all code examples:
+- `type` only, never `interface`
+- Never import from `antd` directly — always `@brdp/ui` or `@brdp/ui/form`
+- All user-facing strings: defineMessages + getFormatMessage()
+- FormFields<T> annotation required when field arrays are defined outside a component
+- `requiredFiled()` not `requiredField()` — intentional spelling
+- Validator signature: `(rule, value)` — no third `{ values }` param
+- Monetary API values are strings — pass directly to addCommaToAmount, never Number()
+- `??` not `||` for fallbacks
+- `dependencies` + `hidden`/`disabled` callbacks preferred over fieldWatch + useEffect
+
+---
+
+Now document this:
+
+[PASTE CODE HERE]
