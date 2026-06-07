@@ -1,0 +1,1492 @@
+<!DOCTYPE html>
+<html lang="en">
+
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Doc-Gen Tooling — Team Presentation</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Mono:ital,wght@0,300;0,400;0,500;1,400&family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,600;0,9..144,700;1,9..144,300&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300&display=swap"
+      rel="stylesheet">
+    <style>
+      :root {
+        --bg: #0d0f14;
+        --surface: #151820;
+        --surface2: #1c2030;
+        --border: rgba(255, 255, 255, 0.07);
+        --border-hi: rgba(255, 255, 255, 0.15);
+        --text: #e8eaf0;
+        --text-muted: #6b7280;
+        --text-dim: #9ca3af;
+        --accent: #6ee7b7;
+        --accent2: #a78bfa;
+        --accent3: #fbbf24;
+        --accent4: #f87171;
+        --accent5: #60a5fa;
+        --code-bg: #0a0c10;
+        --tag-green: rgba(110, 231, 183, 0.12);
+        --tag-purple: rgba(167, 139, 250, 0.12);
+        --tag-amber: rgba(251, 191, 36, 0.12);
+        --tag-red: rgba(248, 113, 113, 0.12);
+        --tag-blue: rgba(96, 165, 250, 0.12);
+      }
+
+      * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+      }
+
+      body {
+        background: var(--bg);
+        color: var(--text);
+        font-family: 'DM Sans', sans-serif;
+        font-size: 18px;
+        line-height: 1.7;
+        overflow: hidden;
+        height: 100vh;
+        width: 100vw;
+        cursor: none;
+      }
+
+      .cursor {
+        position: fixed;
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--accent);
+        pointer-events: none;
+        z-index: 9999;
+        transform: translate(-50%, -50%);
+        mix-blend-mode: screen;
+      }
+
+      /* ── Slides ────── */
+      .slides {
+        width: 100vw;
+        height: 100vh;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .slide {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: flex-start;
+        padding: 4vh 9vw;
+        opacity: 0;
+        pointer-events: none;
+        transform: translateY(22px);
+        transition: opacity 0.5s cubic-bezier(.4, 0, .2, 1), transform 0.5s cubic-bezier(.4, 0, .2, 1);
+      }
+
+      .slide.active {
+        opacity: 1;
+        pointer-events: all;
+        transform: translateY(0);
+      }
+
+      .slide.exit {
+        opacity: 0;
+        transform: translateY(-14px);
+        transition: opacity 0.32s ease, transform 0.32s ease;
+      }
+
+      /* ── Nav ────── */
+      .nav {
+        position: fixed;
+        bottom: 2rem;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+        z-index: 100;
+        background: var(--surface);
+        border: 1px solid var(--border-hi);
+        border-radius: 100px;
+        padding: 0.5rem 1.25rem;
+      }
+
+      .nav button {
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        font-family: 'DM Mono', monospace;
+        font-size: 12px;
+        cursor: pointer;
+        padding: 4px 14px;
+        border-radius: 100px;
+        transition: background 0.2s, color 0.2s;
+      }
+
+      .nav button:hover {
+        background: var(--surface2);
+        color: var(--text);
+      }
+
+      .nav-counter {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        color: var(--text-muted);
+        min-width: 52px;
+        text-align: center;
+      }
+
+      .progress {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent), var(--accent2));
+        transition: width 0.4s cubic-bezier(.4, 0, .2, 1);
+        z-index: 100;
+      }
+
+      .slide-label {
+        position: fixed;
+        top: 1.5rem;
+        right: 2.5rem;
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        color: var(--text-muted);
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+      }
+
+      /* ── Type ────── */
+      .eyebrow {
+        font-family: 'DM Mono', monospace;
+        font-size: 11px;
+        letter-spacing: 0.18em;
+        text-transform: uppercase;
+        color: var(--accent);
+        margin-bottom: 1rem;
+      }
+
+      h1 {
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-size: clamp(3rem, 4.5vw, 5rem);
+        line-height: 1.08;
+        color: var(--text);
+        margin-bottom: 1.5rem;
+      }
+
+      h2 {
+        font-family: 'Fraunces', serif;
+        font-weight: 600;
+        font-size: clamp(2rem, 3vw, 3rem);
+        line-height: 1.15;
+        margin-bottom: 1.5rem;
+        color: var(--text);
+      }
+
+      h3 {
+        font-family: 'DM Sans', sans-serif;
+        font-weight: 500;
+        font-size: 1.05rem;
+        color: var(--text);
+        margin-bottom: 0.4rem;
+      }
+
+      p {
+        color: var(--text-dim);
+        font-size: 1rem;
+        max-width: 72ch;
+      }
+
+      p+p {
+        margin-top: 0.6rem;
+      }
+
+      .lead {
+        font-size: clamp(1.05rem, 1.6vw, 1.25rem);
+        color: var(--text-dim);
+        max-width: 58ch;
+        font-weight: 300;
+        line-height: 1.75;
+      }
+
+      em {
+        color: var(--accent);
+        font-style: normal;
+      }
+
+      strong {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      /* ── Code ────── */
+      pre {
+        background: var(--code-bg);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        padding: 1.1rem 1.4rem;
+        overflow-x: auto;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.82rem;
+        line-height: 1.8;
+        tab-size: 2;
+      }
+
+      code {
+        font-family: 'DM Mono', monospace;
+        font-size: 0.83em;
+        color: var(--accent);
+        background: rgba(110, 231, 183, 0.08);
+        border-radius: 4px;
+        padding: 1px 5px;
+      }
+
+      pre code {
+        background: none;
+        padding: 0;
+        color: inherit;
+        font-size: inherit;
+      }
+
+      .kw {
+        color: var(--accent2);
+      }
+
+      .str {
+        color: var(--accent3);
+      }
+
+      .cm {
+        color: #4b5563;
+        font-style: italic;
+      }
+
+      .fn {
+        color: var(--accent5);
+      }
+
+      .ty {
+        color: var(--accent);
+      }
+
+      /* ── Layout ────── */
+      .two-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 4rem;
+        width: 100%;
+        max-width: 1400px;
+      }
+
+      .two-col-wide {
+        display: grid;
+        grid-template-columns: 1.1fr 0.9fr;
+        gap: 4rem;
+        width: 100%;
+        max-width: 1400px;
+      }
+
+      .three-col {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 1400px;
+      }
+
+      .card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.6rem;
+      }
+
+      .card.accent-green {
+        border-color: rgba(110, 231, 183, 0.22);
+      }
+
+      .card.accent-purple {
+        border-color: rgba(167, 139, 250, 0.22);
+      }
+
+      .card.accent-amber {
+        border-color: rgba(251, 191, 36, 0.18);
+      }
+
+      .card.accent-red {
+        border-color: rgba(248, 113, 113, 0.18);
+      }
+
+      .card.accent-blue {
+        border-color: rgba(96, 165, 250, 0.22);
+      }
+
+      .tag {
+        display: inline-block;
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        padding: 3px 10px;
+        border-radius: 100px;
+        font-weight: 500;
+      }
+
+      .tag-green {
+        background: var(--tag-green);
+        color: var(--accent);
+      }
+
+      .tag-purple {
+        background: var(--tag-purple);
+        color: var(--accent2);
+      }
+
+      .tag-amber {
+        background: var(--tag-amber);
+        color: var(--accent3);
+      }
+
+      .tag-red {
+        background: var(--tag-red);
+        color: var(--accent4);
+      }
+
+      .tag-blue {
+        background: var(--tag-blue);
+        color: var(--accent5);
+      }
+
+      ul {
+        list-style: none;
+      }
+
+      li {
+        padding: 0.38rem 0;
+        color: var(--text-dim);
+        font-size: 0.97rem;
+        display: flex;
+        align-items: flex-start;
+        gap: 0.75rem;
+      }
+
+      li::before {
+        content: '—';
+        color: var(--accent);
+        flex-shrink: 0;
+        margin-top: 0.05em;
+      }
+
+      .check::before {
+        content: '✓';
+        color: var(--accent);
+        font-weight: 500;
+      }
+
+      .cross::before {
+        content: '✗';
+        color: var(--accent4);
+        font-weight: 500;
+      }
+
+      /* ── Timeline ────── */
+      .timeline {
+        display: flex;
+        flex-direction: column;
+        gap: 0;
+        position: relative;
+      }
+
+      .timeline::before {
+        content: '';
+        position: absolute;
+        left: 11px;
+        top: 24px;
+        bottom: 24px;
+        width: 1px;
+        background: var(--border-hi);
+      }
+
+      .timeline-item {
+        display: flex;
+        gap: 1.25rem;
+        padding: 0.55rem 0;
+      }
+
+      .timeline-dot {
+        width: 23px;
+        height: 23px;
+        border-radius: 50%;
+        border: 1.5px solid var(--accent);
+        background: var(--bg);
+        flex-shrink: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-family: 'DM Mono', monospace;
+        font-size: 10px;
+        color: var(--accent);
+        margin-top: 3px;
+        z-index: 1;
+      }
+
+      .timeline-content h4 {
+        font-size: 0.95rem;
+        font-weight: 500;
+        color: var(--text);
+      }
+
+      .timeline-content p {
+        font-size: 0.85rem;
+        margin-top: 0.1rem;
+        max-width: none;
+      }
+
+      /* ── Misc ────── */
+      .divider {
+        width: 48px;
+        height: 2px;
+        background: var(--accent);
+        margin: 1.25rem 0;
+        border-radius: 2px;
+      }
+
+      .badge {
+        display: inline-block;
+        padding: 2px 9px;
+        border-radius: 4px;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.72rem;
+        background: var(--surface2);
+        color: var(--text-dim);
+        border: 1px solid var(--border);
+      }
+
+      .stat {
+        font-family: 'Fraunces', serif;
+        font-size: 3.2rem;
+        font-weight: 600;
+        color: var(--text);
+        line-height: 1;
+      }
+
+      .stat-label {
+        font-size: 0.82rem;
+        color: var(--text-muted);
+        margin-top: 0.3rem;
+      }
+
+      .quote {
+        border-left: 2px solid var(--accent);
+        padding-left: 1.5rem;
+        font-family: 'Fraunces', serif;
+        font-size: 1.25rem;
+        font-style: italic;
+        color: var(--text-dim);
+        font-weight: 300;
+        line-height: 1.6;
+      }
+
+      .flow-box {
+        background: var(--surface2);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 0.55rem 1rem;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.76rem;
+        color: var(--text-dim);
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 0.88rem;
+      }
+
+      th {
+        text-align: left;
+        padding: 0.5rem 1rem;
+        font-family: 'DM Mono', monospace;
+        font-size: 0.7rem;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: var(--text-muted);
+        border-bottom: 1px solid var(--border);
+      }
+
+      td {
+        padding: 0.6rem 1rem;
+        color: var(--text-dim);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.04);
+      }
+
+      td:first-child {
+        color: var(--text);
+        font-weight: 500;
+      }
+
+      .cons-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem;
+        width: 100%;
+        max-width: 1300px;
+      }
+
+      .cons-item {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 1.1rem 1.3rem;
+        display: flex;
+        gap: 1rem;
+        align-items: flex-start;
+      }
+
+      .cons-icon {
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: rgba(248, 113, 113, 0.1);
+        border: 1px solid rgba(248, 113, 113, 0.2);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        flex-shrink: 0;
+        font-size: 13px;
+        color: var(--accent4);
+        margin-top: 1px;
+      }
+
+      .cons-text strong {
+        font-size: 0.92rem;
+        color: var(--text);
+        font-weight: 500;
+        display: block;
+        margin-bottom: 0.2rem;
+      }
+
+      .cons-text span {
+        font-size: 0.84rem;
+        color: var(--text-muted);
+        line-height: 1.55;
+      }
+
+      .next-grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr 1fr;
+        gap: 1.5rem;
+        width: 100%;
+        max-width: 1400px;
+      }
+
+      .next-card {
+        background: var(--surface);
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 1.6rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+
+      .next-card h3 {
+        font-size: 1rem;
+        font-weight: 500;
+        color: var(--text);
+        margin: 0;
+      }
+
+      .next-card p {
+        font-size: 0.87rem;
+        color: var(--text-dim);
+        margin: 0;
+        max-width: none;
+      }
+
+      .next-card ul {
+        margin-top: 0.25rem;
+      }
+
+      .next-card li {
+        font-size: 0.84rem;
+        padding: 0.25rem 0;
+      }
+
+      .next-card pre {
+        margin-top: 0.5rem;
+        font-size: 0.73rem;
+      }
+
+      .changelog-preview {
+        background: #1e1e2e;
+        padding: 0.75rem;
+        border-radius: 8px;
+        font-size: 0.75rem;
+        margin-top: 0.5rem;
+        word-break: break-word;
+        overflow-x: auto;
+      }
+
+      .changelog-preview .version {
+        font-weight: bold;
+        margin: 0.5rem 0 0.25rem;
+        color: #ffd966;
+      }
+
+      .changelog-preview .version .date {
+        font-weight: normal;
+        color: #aaa;
+        font-size: 0.7rem;
+        margin-left: 0.5rem;
+      }
+
+      .changelog-preview .entry {
+        margin: 0.25rem 0;
+        line-height: 1.4;
+        color: #e4e4e7;
+      }
+
+      .changelog-preview a {
+        color: #60a5fa;
+        text-decoration: none;
+      }
+
+      .changelog-preview a:hover {
+        text-decoration: underline;
+      }
+    </style>
+  </head>
+
+  <body>
+
+    <div class="cursor" id="cursor"></div>
+    <div class="progress" id="progress"></div>
+    <div class="slide-label" id="slide-label"></div>
+
+    <div class="slides" id="slides">
+
+      <!-- ══ 1. COVER ══ -->
+      <div class="slide" data-label="Intro">
+        <div
+          style="position:absolute;top:0;right:-2vw;font-family:'Fraunces',serif;font-size:30vw;font-weight:700;color:rgba(255,255,255,0.013);pointer-events:none;line-height:1;user-select:none;">
+          AI</div>
+        <div class="eyebrow">@brdp internal tooling — 2025</div>
+        <h1>AI-Powered<br>Documentation<br><em>Generation</em></h1>
+        <p class="lead">
+          From source code to living docs — automatically.<br>
+          A walkthrough of <code>@brdp/ai-cli</code> and the bidirectional workflow.
+        </p>
+        <div style="margin-top:2rem; display:flex; gap:0.75rem; flex-wrap:wrap;">
+          <span class="tag tag-green">ts → md</span>
+          <span class="tag tag-purple">ts → mdx</span>
+          <span class="tag tag-blue">md → tsx</span>
+        </div>
+      </div>
+
+      <!-- ══ 2. AGENDA ══ -->
+      <div class="slide" data-label="Agenda">
+        <div class="eyebrow">What we'll cover</div>
+        <h2>Session Agenda</h2>
+        <div class="timeline">
+          <div class="timeline-item">
+            <div class="timeline-dot">1</div>
+            <div class="timeline-content">
+              <h4>The Problem &amp; Motivation</h4>
+              <p>Why docs rot, why AI tools break, and what we're solving</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot">2</div>
+            <div class="timeline-content">
+              <h4>Pros &amp; Cons of AI-generated docs</h4>
+              <p>Honest trade-off analysis before we commit to the approach</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot">3</div>
+            <div class="timeline-content">
+              <h4>Architecture &amp; CLI Design</h4>
+              <p>How <code>@brdp/ai-cli</code> is structured and how prompt templates work</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot">4</div>
+            <div class="timeline-content">
+              <h4>Live Demo — three commands</h4>
+              <p><code>to-md</code>, <code>to-mdx</code>, and <code>to-ts</code> in action</p>
+            </div>
+          </div>
+          <div class="timeline-item">
+            <div class="timeline-dot">5</div>
+            <div class="timeline-content">
+              <h4>Team Conventions &amp; Next Steps</h4>
+              <p>How to integrate into your workflow and onboarding use cases</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 3. PROBLEM ══ -->
+      <div class="slide" data-label="Problem">
+        <div class="eyebrow">The problem</div>
+        <h2>Documentation doesn't<br>keep pace with code</h2>
+        <div class="two-col" style="gap:5rem; max-width:1300px;">
+          <div>
+            <div class="divider"></div>
+            <ul>
+              <li>A component is refactored — the docs are never updated</li>
+              <li>A new developer copies a stale example into production</li>
+              <li>Prop names change; the docs still show the old names</li>
+              <li>AI tools hallucinate because they're given outdated context</li>
+              <li>Team time is wasted answering "how does X work?" in Slack</li>
+            </ul>
+          </div>
+          <div>
+            <div class="quote">
+              "The codebase has strong patterns — but those patterns only exist in the heads of senior developers."
+            </div>
+            <p style="margin-top:1.5rem;">
+              Every convention — <code>@brdp/ui</code>, <code>defineMessages</code>, <code>FormFields&lt;T&gt;</code> —
+              is invisible to anyone who wasn't there when it was decided.
+            </p>
+            <p>This tool makes those conventions explicit, enforced, and auto-documented.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 4. PROS ══ -->
+      <div class="slide" data-label="Pros">
+        <div class="eyebrow">Trade-off analysis — advantages</div>
+        <h2>Why this approach <em>works</em></h2>
+        <div class="three-col">
+          <div class="card accent-green">
+            <div class="tag tag-green" style="margin-bottom:0.9rem">Speed</div>
+            <h3>Zero-friction generation</h3>
+            <p style="font-size:0.88rem; margin-top:0.4rem;">One command. A full <code>.md</code> or <code>.mdx</code>
+              file in seconds. No context switching to Confluence or Notion.</p>
+          </div>
+          <div class="card accent-green">
+            <div class="tag tag-green" style="margin-bottom:0.9rem">Consistency</div>
+            <h3>Conventions encoded, not assumed</h3>
+            <p style="font-size:0.88rem; margin-top:0.4rem;">The prompt template carries your rules. Every output
+              already follows team standards — without anyone having to remember them.</p>
+          </div>
+          <div class="card accent-green">
+            <div class="tag tag-green" style="margin-bottom:0.9rem">Bidirectional</div>
+            <h3>Docs → Code too</h3>
+            <p style="font-size:0.88rem; margin-top:0.4rem;">The <code>to-ts</code> command lets you scaffold a
+              component from its markdown spec. Design the API first, generate the implementation second.</p>
+          </div>
+          <div class="card accent-green">
+            <div class="tag tag-green" style="margin-bottom:0.9rem">Onboarding</div>
+            <h3>Living knowledge base</h3>
+            <p style="font-size:0.88rem; margin-top:0.4rem;">New team members get accurate, up-to-date docs for every
+              component they touch. Senior developers stop answering the same questions.</p>
+          </div>
+          <div class="card accent-green">
+            <div class="tag tag-green" style="margin-bottom:0.9rem">LLM Context</div>
+            <h3>Better AI assistance</h3>
+            <p style="font-size:0.88rem; margin-top:0.4rem;">Generated <code>.md</code> files become accurate context
+              for Copilot, Claude, or any AI tool. Better input → better output.</p>
+          </div>
+          <div class="card accent-green">
+            <div class="tag tag-green" style="margin-bottom:0.9rem">Scalable</div>
+            <h3>Works across the monorepo</h3>
+            <p style="font-size:0.88rem; margin-top:0.4rem;">Runs from any directory. Can be scripted into Turborepo
+              pipelines to regenerate docs automatically on merge.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 5. CONS ══ -->
+      <div class="slide" data-label="Cons">
+        <div class="eyebrow">Trade-off analysis — limitations</div>
+        <h2>Where it falls short</h2>
+        <div style="display:flex; gap:4rem; width:100%; max-width:1400px; align-items:flex-start;">
+          <div class="cons-grid" style="flex:1.4;">
+            <div class="cons-item">
+              <div class="cons-icon">≠</div>
+              <div class="cons-text">
+                <strong>Output is non-deterministic</strong>
+                <span>Two runs of the same file may produce slightly different docs. Review is still required.</span>
+              </div>
+            </div>
+            <div class="cons-item">
+              <div class="cons-icon">?</div>
+              <div class="cons-text">
+                <strong>Business context is invisible</strong>
+                <span>The AI can't know this component is used in the multi-sig flow unless that's written in the code
+                  itself.</span>
+              </div>
+            </div>
+            <div class="cons-item">
+              <div class="cons-icon">⟳</div>
+              <div class="cons-text">
+                <strong>Garbage in, garbage out</strong>
+                <span>Poorly typed or poorly structured code produces poorly described docs. Quality starts at the
+                  source.</span>
+              </div>
+            </div>
+            <div class="cons-item">
+              <div class="cons-icon">$</div>
+              <div class="cons-text">
+                <strong>API cost per call</strong>
+                <span>Fine for on-demand use. Becomes a factor if wired into CI for every commit.</span>
+              </div>
+            </div>
+            <div class="cons-item">
+              <div class="cons-icon">∿</div>
+              <div class="cons-text">
+                <strong>Can be over-verbose</strong>
+                <span>Simple utilities may get more documentation than they need. Manual trimming is sometimes
+                  faster.</span>
+              </div>
+            </div>
+            <div class="cons-item">
+              <div class="cons-icon">↻</div>
+              <div class="cons-text">
+                <strong>Templates need maintenance</strong>
+                <span>As team conventions evolve, the prompt files must evolve too. They're not fire-and-forget.</span>
+              </div>
+            </div>
+          </div>
+          <div style="flex:0.6;">
+            <div class="card accent-amber" style="position:sticky; top:0;">
+              <div class="tag tag-amber" style="margin-bottom:0.9rem">The right mental model</div>
+              <h3 style="margin-bottom:0.75rem;">Think: first draft, not final copy</h3>
+              <p style="font-size:0.88rem;">The AI writes the 80% that is structural and predictable. You add the
+                business context, the gotchas, and the non-obvious edge cases.</p>
+              <p style="font-size:0.88rem; margin-top:0.6rem;">A 70% accurate first draft is still faster than starting
+                from a blank file.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 6. ARCHITECTURE ══ -->
+      <div class="slide" data-label="Architecture">
+        <div class="eyebrow">How it works</div>
+        <h2>CLI Architecture</h2>
+        <div class="two-col" style="gap:5rem; max-width:1400px; align-items:start;">
+          <div>
+            <p style="font-size:0.9rem; margin-bottom:1.25rem; color:var(--text-dim);">Seven focused layers — each with
+              one job:</p>
+            <div style="display:flex; flex-direction:column; gap:0.45rem; width:100%;">
+              <div style="display:flex; gap:0.6rem; align-items:center;">
+                <span
+                  style="font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text-muted); width:100px; text-align:right; flex-shrink:0;">CLI</span>
+                <div
+                  style="flex:1; background:rgba(110,231,183,0.08); border:1px solid rgba(110,231,183,0.25); border-radius:8px; padding:0.55rem 1rem; font-family:'DM Mono',monospace; font-size:0.78rem; color:var(--accent); text-align:center;">
+                  bootstrap() → Commander.js</div>
+              </div>
+              <div style="display:flex; gap:0.6rem; align-items:center;">
+                <span
+                  style="font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text-muted); width:100px; text-align:right; flex-shrink:0;">Orchestrator</span>
+                <div
+                  style="flex:1; background:rgba(110,231,183,0.08); border:1px solid rgba(110,231,183,0.25); border-radius:8px; padding:0.55rem 1rem; font-family:'DM Mono',monospace; font-size:0.78rem; color:var(--accent); text-align:center;">
+                  runTask()</div>
+              </div>
+              <div style="display:flex; gap:0.6rem; align-items:center;">
+                <span
+                  style="font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text-muted); width:100px; text-align:right; flex-shrink:0;">Prompt</span>
+                <div style="flex:1; display:flex; gap:0.45rem;">
+                  <div
+                    style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.55rem 0.75rem; font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text-dim); text-align:center;">
+                    FileService.getPrompt()</div>
+                  <div
+                    style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.55rem 0.75rem; font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text-dim); text-align:center;">
+                    PromptUtils.inject()</div>
+                </div>
+              </div>
+              <div style="display:flex; gap:0.6rem; align-items:center;">
+                <span
+                  style="font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text-muted); width:100px; text-align:right; flex-shrink:0;">AI</span>
+                <div
+                  style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.55rem 1rem; font-family:'DM Mono',monospace; font-size:0.78rem; color:var(--text-dim); text-align:center;">
+                  AiService.requestWithRetry()</div>
+              </div>
+              <div style="display:flex; gap:0.6rem; align-items:center;">
+                <span
+                  style="font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text-muted); width:100px; text-align:right; flex-shrink:0;">File
+                  I/O</span>
+                <div style="flex:1; display:flex; gap:0.45rem;">
+                  <div
+                    style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.55rem 0.75rem; font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text-dim); text-align:center;">
+                    FileService.read()</div>
+                  <div
+                    style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.55rem 0.75rem; font-family:'DM Mono',monospace; font-size:0.72rem; color:var(--text-dim); text-align:center;">
+                    FileService.write()</div>
+                </div>
+              </div>
+              <div style="display:flex; gap:0.6rem; align-items:center;">
+                <span
+                  style="font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text-muted); width:100px; text-align:right; flex-shrink:0;">Errors</span>
+                <div style="flex:1; display:flex; gap:0.45rem;">
+                  <div
+                    style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.45rem 0.5rem; font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text-dim); text-align:center;">
+                    FileSystemError</div>
+                  <div
+                    style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.45rem 0.5rem; font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text-dim); text-align:center;">
+                    ApiError</div>
+                  <div
+                    style="flex:1; background:var(--surface2); border:1px solid var(--border); border-radius:8px; padding:0.45rem 0.5rem; font-family:'DM Mono',monospace; font-size:0.68rem; color:var(--text-dim); text-align:center;">
+                    NetworkError</div>
+                </div>
+              </div>
+              <div style="display:flex; gap:0.6rem; align-items:center;">
+                <span
+                  style="font-family:'DM Mono',monospace; font-size:0.7rem; color:var(--text-muted); width:100px; text-align:right; flex-shrink:0;">Logger</span>
+                <div
+                  style="flex:1; background:rgba(110,231,183,0.08); border:1px solid rgba(110,231,183,0.25); border-radius:8px; padding:0.55rem 1rem; font-family:'DM Mono',monospace; font-size:0.78rem; color:var(--accent); text-align:center;">
+                  Logger.info / warn / error / step</div>
+              </div>
+            </div>
+          </div>
+          <div>
+            <p style="font-size:0.9rem; margin-bottom:1.1rem; color:var(--text-dim);">Three commands, each wired to a
+              prompt template:</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Command</th>
+                  <th>Template</th>
+                  <th>Flow</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>to-md</code></td>
+                  <td><code>ts-to-md.txt</code></td>
+                  <td><span class="tag tag-blue">.tsx → .md</span></td>
+                </tr>
+                <tr>
+                  <td><code>to-mdx</code></td>
+                  <td><code>ts-to-mdx.txt</code></td>
+                  <td><span class="tag tag-purple">.tsx → .mdx</span></td>
+                </tr>
+                <tr>
+                  <td><code>to-ts</code></td>
+                  <td><code>md-to-ts.txt</code></td>
+                  <td><span class="tag tag-green">.md → .tsx</span></td>
+                </tr>
+              </tbody>
+            </table>
+            <div style="margin-top:1.5rem; display:flex; flex-direction:column; gap:0.6rem;">
+              <p style="font-size:0.87rem;"><strong>Retry logic:</strong> up to 2 retries with exponential backoff. Only
+                <code>NetworkError</code> is retried — <code>ApiError</code> surfaces immediately.
+              </p>
+              <p style="font-size:0.87rem;"><strong>Stdout mode:</strong> omit the <code>[output]</code> argument and
+                the result is piped to stdout — composable with other shell tools.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 7. TEMPLATES ══ -->
+      <div class="slide" data-label="Templates">
+        <div class="eyebrow">Prompt engineering</div>
+        <h2>How the templates work</h2>
+        <div class="two-col" style="gap:5rem; max-width:1400px; align-items:start;">
+          <div>
+            <p style="font-size:0.9rem; margin-bottom:1rem;">Each <code>.txt</code> file in <code>/prompts</code> is a
+              parameterised prompt. The CLI injects your source via <code>{'{CODE}'}</code> or <code>{'{DOCS}'}</code>:
+            </p>
+            <pre><code><span class="cm">// PromptUtils.inject() replaces {VARS}</span>
+<span class="kw">const</span> prompt = PromptUtils.<span class="fn">inject</span>(template, {
+  [<span class="ty">PromptVar</span>.Code]: sourceCode
+});
+
+<span class="cm">// Result: "...read the code below:\n\n" + your file</span></code></pre>
+            <p style="font-size:0.87rem; margin-top:1.1rem;">The template instructs the model on:</p>
+            <ul style="margin-top:0.5rem;">
+              <li>The <strong>codebase context</strong> — <code>@brdp/ui</code>, <code>defineMessages</code>, Jalali
+                dates</li>
+              <li>The <strong>required output structure</strong> — exact sections, order, table columns</li>
+              <li>The <strong>team rules</strong> — enforced automatically in every output</li>
+              <li>The <strong>analysis step</strong> — forces the model to reason before writing</li>
+            </ul>
+          </div>
+          <div>
+            <p style="font-size:0.9rem; margin-bottom:0.9rem;">Structure of <code>ts-to-md.txt</code>:</p>
+            <div class="timeline">
+              <div class="timeline-item">
+                <div class="timeline-dot" style="font-size:9px">①</div>
+                <div class="timeline-content">
+                  <h4>System role + codebase context</h4>
+                  <p>"You are a technical doc writer for an internal banking UI built on @brdp/ui…"</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot" style="font-size:9px">②</div>
+                <div class="timeline-content">
+                  <h4>Analysis step (silent reasoning)</h4>
+                  <p>Forces classification: component / hook / utility / form / feature</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot" style="font-size:9px">③</div>
+                <div class="timeline-content">
+                  <h4>Required output structure</h4>
+                  <p>Exact sections in exact order. Skipped sections must include <code>&lt;!-- N/A --&gt;</code></p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot" style="font-size:9px">④</div>
+                <div class="timeline-content">
+                  <h4>Hard rules section</h4>
+                  <p>Validator signature, monetary values, <code>type</code> only, fallback operators</p>
+                </div>
+              </div>
+              <div class="timeline-item">
+                <div class="timeline-dot" style="font-size:9px">⑤</div>
+                <div class="timeline-content">
+                  <h4><code>{'{CODE}'}</code> injection point</h4>
+                  <p>Your source file is pasted here at runtime</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 8. THREE FLOWS ══ -->
+      <div class="slide" data-label="Workflows">
+        <div class="eyebrow">The three workflows</div>
+        <h2>What you can build</h2>
+        <div class="three-col">
+          <div class="card accent-blue">
+            <div class="tag tag-blue" style="margin-bottom:1rem">ts → md</div>
+            <h3>LLM-facing docs</h3>
+            <div style="display:flex; flex-direction:column; gap:0.4rem; margin-top:0.75rem;">
+              <div class="flow-box">YourComponent.tsx</div>
+              <div style="color:var(--text-muted); font-size:0.8rem; padding:0.1rem 0;">↓ <code
+                  style="font-size:0.72rem;">pnpm ai to-md</code></div>
+              <div class="flow-box" style="border-color:rgba(96,165,250,0.3); color:var(--accent5);">YourComponent.md
+              </div>
+            </div>
+            <p style="font-size:0.85rem; margin-top:1rem;">Paste into Claude, Copilot, or an AI-assisted PR review. Flat
+              markdown — no JSX, no MDX components.</p>
+          </div>
+          <div class="card accent-purple">
+            <div class="tag tag-purple" style="margin-bottom:1rem">ts → mdx</div>
+            <h3>Human-facing docs</h3>
+            <div style="display:flex; flex-direction:column; gap:0.4rem; margin-top:0.75rem;">
+              <div class="flow-box">YourComponent.tsx</div>
+              <div style="color:var(--text-muted); font-size:0.8rem; padding:0.1rem 0;">↓ <code
+                  style="font-size:0.72rem;">pnpm ai to-mdx</code></div>
+              <div class="flow-box" style="border-color:rgba(167,139,250,0.3); color:var(--accent2);">
+                docs/YourComponent.mdx</div>
+            </div>
+            <p style="font-size:0.85rem; margin-top:1rem;">Publish to Storybook or Docusaurus. Includes
+              <code>&lt;Callout&gt;</code>, prop tables, and usage examples.
+            </p>
+          </div>
+          <div class="card accent-green">
+            <div class="tag tag-green" style="margin-bottom:1rem">md → tsx</div>
+            <h3>Spec → Component</h3>
+            <div style="display:flex; flex-direction:column; gap:0.4rem; margin-top:0.75rem;">
+              <div class="flow-box">ComponentSpec.md</div>
+              <div style="color:var(--text-muted); font-size:0.8rem; padding:0.1rem 0;">↓ <code
+                  style="font-size:0.72rem;">pnpm ai to-ts</code></div>
+              <div class="flow-box" style="border-color:rgba(110,231,183,0.3); color:var(--accent);">ComponentSpec.tsx
+              </div>
+            </div>
+            <p style="font-size:0.85rem; margin-top:1rem;">Design the API in markdown first. Generate the TypeScript
+              scaffold. Useful for spec reviews and new feature kickoffs.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 9. DEMO ══ -->
+      <div class="slide" data-label="Demo">
+        <div class="eyebrow">Live demo</div>
+        <h2>The three commands</h2>
+        <div style="display:flex; flex-direction:column; gap:1.1rem; max-width:1000px; width:100%;">
+          <div class="card">
+            <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.6rem;">
+              <span class="tag tag-blue">Step 1</span>
+              <span style="font-size:0.87rem; color:var(--text-muted);">Generate LLM-facing markdown from a
+                component</span>
+            </div>
+            <pre><code><span class="cm"># from monorepo root</span>
+<span class="fn">pnpm</span> ai to-md src/components/CustomerSearch.tsx docs/CustomerSearch.md</code></pre>
+          </div>
+          <div class="card">
+            <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.6rem;">
+              <span class="tag tag-purple">Step 2</span>
+              <span style="font-size:0.87rem; color:var(--text-muted);">Generate MDX for your doc site</span>
+            </div>
+            <pre><code><span class="fn">pnpm</span> ai to-mdx src/components/CustomerSearch.tsx docs/CustomerSearch.mdx</code></pre>
+          </div>
+          <div class="card">
+            <div style="display:flex; align-items:center; gap:0.75rem; margin-bottom:0.6rem;">
+              <span class="tag tag-green">Step 3</span>
+              <span style="font-size:0.87rem; color:var(--text-muted);">Scaffold a component from its markdown
+                spec</span>
+            </div>
+            <pre><code><span class="fn">pnpm</span> ai to-ts docs/NewFeature.md src/components/NewFeature.tsx</code></pre>
+          </div>
+          <div style="display:flex; gap:2rem; font-size:0.82rem; color:var(--text-muted); margin-top:0.25rem;">
+            <span>→ Omit <code>[output]</code> to pipe result to stdout</span>
+            <span>→ Set <code>API_KEY</code> in <code>.env</code> at package root or cwd</span>
+            <span>→ Override model via <code>API_MODEL</code> env var</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 10. CONVENTIONS ══ -->
+      <div class="slide" data-label="Conventions">
+        <div class="eyebrow">What the prompt enforces</div>
+        <h2>Your team conventions,<br><em>baked in</em></h2>
+        <div class="two-col-wide" style="gap:4rem; max-width:1400px; align-items:start;">
+          <div>
+            <p style="font-size:0.9rem; margin-bottom:1.1rem;">Every generated doc and component already follows these
+              rules — because they live in the prompt template:</p>
+            <table>
+              <thead>
+                <tr>
+                  <th>Rule</th>
+                  <th>Why it matters</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><code>type</code> only, never <code>interface</code></td>
+                  <td>Team standard</td>
+                </tr>
+                <tr>
+                  <td>Import from <code>@brdp/ui</code>, never <code>antd</code></td>
+                  <td>Abstraction layer</td>
+                </tr>
+                <tr>
+                  <td>All strings via <code>defineMessages</code> + <code>getFormatMessage()</code></td>
+                  <td>i18n enforcement</td>
+                </tr>
+                <tr>
+                  <td><code>FormFields&lt;T&gt;</code> annotation required</td>
+                  <td>Type safety</td>
+                </tr>
+                <tr>
+                  <td>Validator: <code>(rule, value)</code> — no third param</td>
+                  <td>Our validator shape</td>
+                </tr>
+                <tr>
+                  <td><code>??</code> not <code>||</code> for fallbacks</td>
+                  <td>Null-safety</td>
+                </tr>
+                <tr>
+                  <td>Monetary values: string → <code>addCommaToAmount()</code></td>
+                  <td>No coercion bugs</td>
+                </tr>
+                <tr>
+                  <td>Use <code>dependencies</code> + <code>hidden/disabled</code> callbacks</td>
+                  <td>No <code>useEffect</code> for field logic</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+          <div>
+            <p style="font-size:0.9rem; margin-bottom:0.9rem;">Example: instead of <code>useEffect</code> watching a
+              field, the generated code uses <code>dependencies</code>:</p>
+            <pre style="font-size:0.76rem;"><code><span class="cm">// ✗ what the AI will NOT generate</span>
+<span class="kw">const</span> type = <span class="fn">fieldWatch</span>(<span class="str">'paymentType'</span>);
+<span class="fn">useEffect</span>(() => {
+  <span class="fn">setFieldHidden</span>(<span class="str">'iban'</span>, type !== <span class="str">'transfer'</span>);
+}, [type]);
+
+<span class="cm">// ✓ what the AI generates instead</span>
+{
+  name: <span class="str">'iban'</span>,
+  <span class="fn">hidden</span>: ({ paymentType }) => paymentType !== <span class="str">'transfer'</span>,
+  dependencies: [<span class="str">'paymentType'</span>],
+}</code></pre>
+            <div class="card" style="margin-top:1.1rem; padding:1rem 1.25rem;">
+              <p style="font-size:0.86rem;">Adding a convention is a one-line change in the prompt file. Update it once
+                — every future doc generation reflects it immediately.</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 11. ONBOARDING ══ -->
+      <div class="slide" data-label="Onboarding">
+        <div class="eyebrow">Team use case</div>
+        <h2>Developer onboarding<br>with this tool</h2>
+        <div class="two-col" style="gap:5rem; max-width:1300px; align-items:start;">
+          <div>
+            <p style="margin-bottom:1.25rem; font-size:0.95rem; color:var(--text-dim);">Before this tool:</p>
+            <ul>
+              <li class="cross">Senior dev spends hours walking through codebase patterns</li>
+              <li class="cross">New dev reads stale Confluence pages written months ago</li>
+              <li class="cross">New dev copies patterns from old code — including the wrong ones</li>
+              <li class="cross">Senior dev catches mistakes in PR review and explains again</li>
+              <li class="cross">The cycle repeats for every new pattern or feature area</li>
+            </ul>
+            <div class="divider" style="margin-top:1.5rem; background:var(--accent4);"></div>
+            <p style="margin-top:1.25rem; font-size:0.95rem; color:var(--text-dim);">With generated docs:</p>
+            <ul>
+              <li class="check">Every component ships with an accurate, up-to-date <code>.md</code></li>
+              <li class="check">New dev generates docs for any component they're about to use</li>
+              <li class="check">Paste the <code>.md</code> into an AI assistant — ask questions with real context</li>
+              <li class="check">Senior dev time shifts from explanation to architecture</li>
+            </ul>
+          </div>
+          <div>
+            <div class="card accent-purple">
+              <div class="tag tag-purple" style="margin-bottom:0.9rem">Workflow for a new developer</div>
+              <div class="timeline">
+                <div class="timeline-item">
+                  <div class="timeline-dot" style="font-size:9px">1</div>
+                  <div class="timeline-content">
+                    <h4>Clone repo, configure <code>.env</code></h4>
+                    <p>Set <code>API_KEY</code> — takes 2 minutes</p>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-dot" style="font-size:9px">2</div>
+                  <div class="timeline-content">
+                    <h4>Generate docs for the component they need</h4>
+                    <p><code>pnpm ai to-md src/components/X.tsx</code></p>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-dot" style="font-size:9px">3</div>
+                  <div class="timeline-content">
+                    <h4>Paste doc into AI assistant for questions</h4>
+                    <p>Accurate context → accurate answers</p>
+                  </div>
+                </div>
+                <div class="timeline-item">
+                  <div class="timeline-dot" style="font-size:9px">4</div>
+                  <div class="timeline-content">
+                    <h4>Enrich and commit the <code>.md</code></h4>
+                    <p>Add business context the AI couldn't know. Ship it with the component.</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 12. NEXT STEPS ══ -->
+      <div class="slide" data-label="Next steps">
+        <div class="eyebrow">What comes next</div>
+        <h2>Roadmap</h2>
+        <div class="next-grid">
+          <!-- Short term: prompt engineering & Ant Design style output -->
+          <div class="next-card" style="border-color:rgba(251,191,36,0.2);">
+            <div class="tag tag-amber">Short term</div>
+            <h3>Smarter prompts → Ant Design style docs</h3>
+            <p>Update agent prompts to generate documentation matching the <strong>exact format</strong> of Ant Design
+              component pages.</p>
+            <p>
+              📄 Reference:
+              <a href="https://ant.design/components/avatar.md" target="_blank" rel="noopener noreferrer">
+                ant.design/components/avatar.md
+              </a>
+              <br><small>(click → see the expected output structure)</small>
+            </p>
+            <p>New prompt templates:</p>
+            <ul>
+              <li><code>to-doc</code> – produce API tables, demo examples, and design tokens</li>
+              <li><code>to-component</code> – generate component code from markdown spec</li>
+              <li><code>to-test</code> – create unit/e2e tests from documentation</li>
+            </ul>
+            <pre><code><span class="str">"docs:generate"</span>: {
+  <span class="str">"prompt"</span>: <span class="str">"antd_component_prompt.md"</span>,
+  <span class="str">"output"</span>: <span class="str">"docs/[component].md"</span>
+}</code></pre>
+          </div>
+
+          <!-- Medium term: local AI, no API calls -->
+          <div class="next-card" style="border-color:rgba(96,165,250,0.2);">
+            <div class="tag tag-blue">Medium term</div>
+            <h3>Fully local AI execution</h3>
+            <p>Run all agent inference <strong>on‑prem / offline</strong> – no cloud APIs, no external services
+              (including
+              DeepSeek API).</p>
+            <ul>
+              <li>Integrate with <strong>Ollama</strong>, <strong>llama.cpp</strong> or <strong>LocalAI</strong></li>
+              <li>Use quantised models (Llama 3, DeepSeek‑lite locally) for doc & component generation</li>
+              <li>Zero latency, full data privacy, air‑gap capable</li>
+              <li>Fallback to CPU inference with GPU acceleration optional</li>
+            </ul>
+            <pre><code><span class="str"># Example local model config</span>
+model: <span class="str">"deepseek-coder:6.7b-instruct"</span>
+backend: <span class="str">"ollama"</span>
+api_url: <span class="str">"http://localhost:11434"</span>  <span class="str"># no external calls</span></code></pre>
+          </div>
+
+          <!-- Long term card – fixed width + proper changelog -->
+          <div class="next-card" style="border-color:rgba(167,139,250,0.2);">
+            <div class="tag tag-purple">Long term</div>
+            <h3>Multi‑agent orchestration + live changelog</h3>
+            <p>Orchestrate multiple specialised agents (inspired by <a
+                href="https://medium.com/@milad.noroozi/docs-that-dont-rot-how-multi-agent-ai-rewrote-our-workflow-6e0c911658d6"
+                target="_blank" rel="noopener noreferrer">this multi‑agent workflow</a>).</p>
+            <ul>
+              <li><strong>Agent roles</strong>: Doc writer, Component generator, Test author, Changelog analyst</li>
+              <li><strong>Orchestrator (Divar‑like pattern)</strong> – routes tasks, merges outputs, handles conflicts
+              </li>
+              <li><strong>Live changelog generation</strong> from git diff → structured entries (emoji, PRs,
+                contributors)</li>
+            </ul>
+            <p><strong>Example output – matches <a href="https://ant.design/changelog"
+                  target="_blank">ant.design/changelog</a>
+                format:</strong></p>
+            <div class="changelog-preview">
+              <div class="version">## 6.4.3 <span class="date">2026-05-18</span></div>
+              <div class="entry">🐞 Fix DatePicker RangePicker empty placeholder when locale only defines
+                singular*Placeholder
+                fields. <a href="#">#58020</a> <a href="https://github.com/yogeshwaran-c">@yogeshwaran-c</a></div>
+              <div class="entry">🐞 Fix Result rendering an empty <code>title</code> element when the title prop is not
+                provided.
+                <a href="#">#58028</a> <a href="https://github.com/yogeshwaran-c">@yogeshwaran-c</a>
+              </div>
+              <div class="entry">⚡️ Improve Table and Mentions performance by reducing redundant array iterations. <a
+                  href="#">#58006</a> <a href="https://github.com/ug-hero">@ug-hero</a></div>
+              <div class="version">## 6.4.2 <span class="date">2026-05-14</span></div>
+              <div class="entry">🐞 Fix message and notification build error in strict ESM toolchains. <a
+                  href="#">#57976</a> <a href="https://github.com/QDyanbing">@QDyanbing</a></div>
+            </div>
+            <p>✅ Automatic PR links, contributor mentions, and semantic version bump suggestions.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 13. SUMMARY ══ -->
+      <div class="slide" data-label="Summary">
+        <div class="eyebrow">Takeaways</div>
+        <h2>Summary</h2>
+        <div class="two-col" style="gap:5rem; max-width:1300px; align-items:start;">
+          <div>
+            <div style="display:flex; gap:3rem; margin-bottom:2.5rem;">
+              <div>
+                <div class="stat">3</div>
+                <div class="stat-label">CLI commands</div>
+              </div>
+              <div>
+                <div class="stat">2</div>
+                <div class="stat-label">output formats</div>
+              </div>
+              <div>
+                <div class="stat" style="color:var(--accent)">∞</div>
+                <div class="stat-label">time saved</div>
+              </div>
+            </div>
+            <ul>
+              <li>This is a <strong>first-draft tool</strong> — review is still required, but it eliminates the
+                blank-page problem</li>
+              <li>The prompt templates are the <strong>single source of truth</strong> for team conventions — keep them
+                current</li>
+              <li>The <code>md → ts</code> direction enables <strong>spec-first development</strong> — design the API
+                before writing the code</li>
+              <li>Generated <code>.md</code> files give every AI assistant <strong>accurate codebase context</strong>
+              </li>
+              <li>Your contribution: add the business context, the "why", and the non-obvious edge cases</li>
+            </ul>
+          </div>
+          <div>
+            <div class="card accent-green">
+              <div class="tag tag-green" style="margin-bottom:0.9rem">Action items</div>
+              <ul>
+                <li>Set up <code>API_KEY</code> in your local <code>.env</code></li>
+                <li>Run <code>pnpm ai to-md</code> on a component you own</li>
+                <li>Review the output — add the business context it missed</li>
+                <li>Commit the <code>.md</code> file alongside the <code>.tsx</code></li>
+                <li>Open a PR against <code>prompts/</code> to propose new conventions</li>
+              </ul>
+            </div>
+            <p style="font-size:0.82rem; margin-top:1rem; color:var(--text-muted);">The prompt file IS the discussion.
+              Convention changes go there first.</p>
+          </div>
+        </div>
+      </div>
+
+      <!-- ══ 14. END ══ -->
+      <div class="slide" data-label="End">
+        <div
+          style="position:absolute;top:0;right:-2vw;font-family:'Fraunces',serif;font-size:30vw;font-weight:700;color:rgba(110,231,183,0.025);pointer-events:none;line-height:1;user-select:none;">
+          ?</div>
+        <div class="eyebrow">That's a wrap</div>
+        <h1>Questions?</h1>
+        <p class="lead">The tool lives in <code>packages/ai-cli</code>.<br>Prompt templates are in
+          <code>packages/ai-cli/prompts/</code>.<br>Documentation lives wherever you commit it.
+        </p>
+        <div style="margin-top:2.5rem; display:flex; gap:1rem; flex-wrap:wrap;">
+          <div class="card" style="padding:0.75rem 1.25rem; display:flex; flex-direction:column; gap:0.2rem;">
+            <span
+              style="font-size:0.7rem; color:var(--text-muted); font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.1em;">Command</span>
+            <code style="font-size:0.88rem;">pnpm ai to-md &lt;input&gt; [output]</code>
+          </div>
+          <div class="card" style="padding:0.75rem 1.25rem; display:flex; flex-direction:column; gap:0.2rem;">
+            <span
+              style="font-size:0.7rem; color:var(--text-muted); font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.1em;">Command</span>
+            <code style="font-size:0.88rem;">pnpm ai to-mdx &lt;input&gt; [output]</code>
+          </div>
+          <div class="card" style="padding:0.75rem 1.25rem; display:flex; flex-direction:column; gap:0.2rem;">
+            <span
+              style="font-size:0.7rem; color:var(--text-muted); font-family:'DM Mono',monospace; text-transform:uppercase; letter-spacing:.1em;">Command</span>
+            <code style="font-size:0.88rem;">pnpm ai to-ts &lt;input&gt; [output]</code>
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="nav">
+      <button id="btn-prev">← prev</button>
+      <span class="nav-counter" id="nav-counter">1 / 14</span>
+      <button id="btn-next">next →</button>
+    </div>
+
+    <script>
+      const slides = Array.from(document.querySelectorAll('.slide'));
+      const progress = document.getElementById('progress');
+      const counter = document.getElementById('nav-counter');
+      const label = document.getElementById('slide-label');
+      const cursor = document.getElementById('cursor');
+      let current = 0;
+
+      document.addEventListener('mousemove', e => {
+        cursor.style.left = e.clientX + 'px';
+        cursor.style.top = e.clientY + 'px';
+      });
+
+      function goTo(n) {
+        if (n < 0 || n >= slides.length) return;
+        const old = current;
+        slides[old].classList.remove('active');
+        slides[old].classList.add('exit');
+        setTimeout(() => slides[old].classList.remove('exit'), 380);
+        current = n;
+        slides[current].classList.add('active');
+        progress.style.width = ((current + 1) / slides.length * 100) + '%';
+        counter.textContent = (current + 1) + ' / ' + slides.length;
+        label.textContent = slides[current].dataset.label || '';
+      }
+
+      goTo(0);
+      document.getElementById('btn-next').addEventListener('click', () => goTo(current + 1));
+      document.getElementById('btn-prev').addEventListener('click', () => goTo(current - 1));
+      document.addEventListener('keydown', e => {
+        if (e.key === 'ArrowRight' || e.key === 'ArrowDown' || e.key === ' ') { e.preventDefault(); goTo(current + 1); }
+        if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { e.preventDefault(); goTo(current - 1); }
+      });
+      let tx = 0;
+      document.addEventListener('touchstart', e => { tx = e.touches[0].clientX; }, { passive: true });
+      document.addEventListener('touchend', e => {
+        const dx = e.changedTouches[0].clientX - tx;
+        if (dx < -50) goTo(current + 1);
+        if (dx > 50) goTo(current - 1);
+      });
+    </script>
+  </body>
+
+</html>
